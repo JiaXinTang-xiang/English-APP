@@ -3,3 +3,5 @@ alter table public.user_settings add column if not exists word_volume integer no
 alter table public.user_settings add column if not exists keyboard_sound boolean not null default false;
 alter table public.user_settings add column if not exists keyboard_sound_file text not null default '机械键盘2';
 alter table public.user_settings add column if not exists keyboard_volume integer not null default 55;
+alter table public.user_settings add column if not exists feedback_sound boolean not null default true;
+alter table public.user_settings add column if not exists feedback_volume integer not null default 55;

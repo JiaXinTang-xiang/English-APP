@@ -1,0 +1,3 @@
+The feedback sound files in this directory are adapted from the open-source
+Qwerty Learner project (https://github.com/RealKai42/qwerty-learner),
+distributed under the GNU GPL v3 license. See the project LICENSE for terms.

@@ -1,6 +1,6 @@
 import { computed, reactive, ref } from 'vue';
 import { getJson, removeItem, setJson } from '../services/storage';
-import { initializeAudioSettings, playKeyboardSound, playWord, previewKeyboardSound, previewWord, saveAudioSettings } from '../services/audio';
+import { initializeAudioSettings, playFeedback, playKeyboardSound, playWord, previewFeedback, previewKeyboardSound, previewWord, saveAudioSettings } from '../services/audio';
 import { cloudProgressToLocal, getCloudUser, mergeProgress, pullProgress, pushProgress } from '../services/cloudSync';
 
 const PROGRESS_KEY = 'cet4-progress-v1';
@@ -63,6 +63,8 @@ export function useLearningStore() {
   function playKeySound() { playKeyboardSound(); }
   function previewKeySound() { previewKeyboardSound(); }
   function previewWordSound() { previewWord(); }
+  function playAnswerSound(type) { playFeedback(type); }
+  function previewAnswerSound(type) { previewFeedback(type); }
   function updateAudio() {
     const saved = saveAudioSettings(audio.value);
     void pushProgress(progress.value, audio.value).catch(() => {});
@@ -117,6 +119,7 @@ export function useLearningStore() {
     if (!ok) {
       if (session.questionType === 'spell') session.spellingDiff = spellingDifference(typedAnswer, session.current.word);
       session.attempts++; recordWrong();
+      if (session.questionType === 'typing') { session.attempts = 0; session.feedback = '输入有误，已清空，请重新敲这个单词。'; return; }
       if (session.attempts < 3) { session.feedback = `回答不对，还可以尝试 ${3 - session.attempts} 次。`; return; }
     } else {
       session.right++;
@@ -160,7 +163,7 @@ export function useLearningStore() {
       progress.value = mergeProgress(progress.value, cloudProgressToLocal(cloud));
       if (cloud?.settings) {
         const settings = cloud.settings;
-        audio.value = { ...audio.value, auto: Boolean(settings.auto_play ?? audio.value.auto), accent: settings.accent || audio.value.accent, wordVolume: Number(settings.word_volume ?? audio.value.wordVolume ?? 85), keyboard: Boolean(settings.keyboard_sound ?? audio.value.keyboard), keyboardSound: settings.keyboard_sound_file || audio.value.keyboardSound, keyboardVolume: Number(settings.keyboard_volume ?? audio.value.keyboardVolume ?? 55) };
+        audio.value = { ...audio.value, auto: Boolean(settings.auto_play ?? audio.value.auto), accent: settings.accent || audio.value.accent, wordVolume: Number(settings.word_volume ?? audio.value.wordVolume ?? 85), keyboard: Boolean(settings.keyboard_sound ?? audio.value.keyboard), keyboardSound: settings.keyboard_sound_file || audio.value.keyboardSound, keyboardVolume: Number(settings.keyboard_volume ?? audio.value.keyboardVolume ?? 55), feedback: settings.feedback_sound ?? audio.value.feedback, feedbackVolume: Number(settings.feedback_volume ?? audio.value.feedbackVolume ?? 55) };
         await saveAudioSettings(audio.value);
       }
       await setJson(PROGRESS_KEY, progress.value);
@@ -179,7 +182,7 @@ export function useLearningStore() {
     await removeItem(PROGRESS_KEY);
   }
 
-  return { days, progress, audio, cloudSync, progressSummary, session, dayInfo, wrongWords, sessionMistakes, nextNewDay, dueReviews, today, meta, speak, playKeySound, previewKeySound, previewWordSound, updateAudio, prepareDay, prepareCustom, sourceWords, start, answer, finish, next, syncWithCloud, clearLocalProgress };
+  return { days, progress, audio, cloudSync, progressSummary, session, dayInfo, wrongWords, sessionMistakes, nextNewDay, dueReviews, today, meta, speak, playKeySound, playAnswerSound, previewKeySound, previewWordSound, previewAnswerSound, updateAudio, prepareDay, prepareCustom, sourceWords, start, answer, finish, next, syncWithCloud, clearLocalProgress };
 }
 
 function today() { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
