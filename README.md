@@ -11,6 +11,7 @@
 - 拼写纠错（编辑距离逐字母对比）
 - 离线可用（PWA，Service Worker 缓存）
 - Android App（Capacitor 离线封装，和网页版共用同一套前端）
+- Supabase Cloud 登录与学习进度同步（配置后启用，未登录仍可离线使用）
 
 ## 使用
 
@@ -34,6 +35,9 @@ npm run build:web
 - `src/router/index.js`：Vue Router Hash 路由
 - `src/stores/learning.js`：学习进度与训练状态
 - `src/services/storage.js`：Web LocalStorage / Android Preferences 统一存储
+- `src/services/supabase.js`：Supabase 客户端（仅使用公开 anon key）
+- `src/services/cloudSync.js`：登录和学习数据同步接口
+- `supabase/schema.sql`：Supabase 表结构与 RLS 安全策略
 - `src/services/audio.js`：统一音频播放模块
 - `public/vocab-data.js`：网页构建使用的词表数据
 - `vocab-data.js`：由文档生成的源词表数据
@@ -66,3 +70,23 @@ npm run android:apk
 生成的 APK 位于 `android/app/build/outputs/apk/debug/app-debug.apk`。`dist/` 是 Vite 构建目录，不提交到 Git；每次修改 Vue 代码后重新执行 `npm run android:sync` 即可同步到 Android 工程。
 
 当前 App ID 为 `com.jiaxintang.cet4vocab`，后续增加六级时只需扩展词库数据，不需要重写 Android 外壳。
+
+## Supabase Cloud
+
+1. 在 Supabase 控制台 SQL Editor 执行 `supabase/schema.sql`。
+2. 复制项目 URL 和公开 anon key，创建本地 `.env`（不要提交）：
+
+```bash
+cp .env.example .env
+```
+
+3. 在 `.env` 填入：
+
+```text
+VITE_SUPABASE_URL=https://你的项目.supabase.co
+VITE_SUPABASE_ANON_KEY=你的公开anon-key
+```
+
+4. Vercel 项目 Settings → Environment Variables 中添加同名变量，然后重新部署。
+
+`service_role` key 不能放进 Vue、Vercel 前端或 Android App。RLS 策略保证每个用户只能访问自己的进度。

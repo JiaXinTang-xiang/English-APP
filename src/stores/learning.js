@@ -1,6 +1,7 @@
 import { computed, reactive, ref } from 'vue';
 import { getJson, setJson } from '../services/storage';
 import { initializeAudioSettings, playWord, saveAudioSettings } from '../services/audio';
+import { cloudProgressToLocal, getCloudUser, pullProgress, pushProgress } from '../services/cloudSync';
 
 const PROGRESS_KEY = 'cet4-progress-v1';
 export const REVIEW_DAYS = [1, 2, 4, 7, 15, 30];
@@ -42,14 +43,22 @@ export function useLearningStore() {
     });
   });
 
-  function saveProgress() { return setJson(PROGRESS_KEY, progress.value); }
+  function saveProgress() {
+    const saved = setJson(PROGRESS_KEY, progress.value);
+    void pushProgress(progress.value, audio.value).catch(() => {});
+    return saved;
+  }
   function meta(word) {
     const key = word.word.toLowerCase();
     progress.value.words[key] ||= { right: 0, wrong: 0 };
     return progress.value.words[key];
   }
   function speak(word) { playWord(word.word, audio.value.accent); }
-  function updateAudio() { return saveAudioSettings(audio.value); }
+  function updateAudio() {
+    const saved = saveAudioSettings(audio.value);
+    void pushProgress(progress.value, audio.value).catch(() => {});
+    return saved;
+  }
   function prepareDay(day, gap = null) {
     session.selectedDay = Number(day); session.reviewGap = gap === null ? null : Number(gap); session.customWords = null; session.label = `Day ${day}`;
   }
@@ -111,7 +120,23 @@ export function useLearningStore() {
   }
   function next() { session.index++; return nextQuestion(); }
 
-  return { days, progress, audio, session, dayInfo, wrongWords, sessionMistakes, nextNewDay, dueReviews, today, meta, speak, updateAudio, prepareDay, prepareCustom, sourceWords, start, choices, answer, finish, next };
+  async function syncWithCloud() {
+    const user = await getCloudUser();
+    if (!user) return { synced: false, reason: 'signed-out' };
+    const cloud = await pullProgress();
+    const hasCloudData = Boolean(cloud?.words?.length || cloud?.days?.length || cloud?.settings);
+    if (hasCloudData) {
+      progress.value = cloudProgressToLocal(cloud);
+      if (cloud.settings) audio.value = { auto: Boolean(cloud.settings.auto_play), accent: cloud.settings.accent || 'us' };
+      await saveProgress();
+      await saveAudioSettings(audio.value);
+    } else {
+      await pushProgress(progress.value, audio.value);
+    }
+    return { synced: true, user };
+  }
+
+  return { days, progress, audio, session, dayInfo, wrongWords, sessionMistakes, nextNewDay, dueReviews, today, meta, speak, updateAudio, prepareDay, prepareCustom, sourceWords, start, choices, answer, finish, next, syncWithCloud };
 }
 
 function today() { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
