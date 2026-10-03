@@ -20,6 +20,7 @@
 <body>
   <main class="shell">
     <section id="home" class="view active">
+      <button id="installApp" class="install-app hidden" type="button">⬇ 安装到手机</button>
       <header class="hero">
         <p class="eyebrow">CET-4 · 45天词汇</p>
         <h1>今天背哪一天？</h1>
@@ -28,6 +29,10 @@
       <div class="home-actions">
         <button id="randomDay" class="primary">领取今日任务</button>
         <button id="wrongBook" class="secondary">错词本 <span id="wrongCount">0</span></button>
+      </div>
+      <div class="audio-setting">
+        <label><input id="autoSpeak" type="checkbox"> 进入题目时自动播放发音</label>
+        <span>也可以点击题目旁的 🔊 手动播放</span>
       </div>
       <div id="dayGrid" class="day-grid"></div>
     </section>
