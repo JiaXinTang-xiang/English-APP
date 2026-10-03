@@ -9,6 +9,7 @@ import AuthView from '../views/AuthView.vue';
 import AccountView from '../views/AccountView.vue';
 import WordsView from '../views/WordsView.vue';
 import ArticlesView from '../views/ArticlesView.vue';
+import StatisticsView from '../views/StatisticsView.vue';
 import { identity, initializeIdentity } from '../services/identity';
 
 const router = createRouter({
@@ -24,6 +25,7 @@ const router = createRouter({
     { path: '/summary', name: 'summary', component: SummaryView },
     { path: '/welcome', name: 'auth', component: AuthView, meta: { public: true, immersive: true } },
     { path: '/account', name: 'account', component: AccountView },
+    { path: '/statistics', name: 'statistics', component: StatisticsView },
     { path: '/:pathMatch(.*)*', redirect: '/' }
   ],
   scrollBehavior: () => ({ top: 0 })

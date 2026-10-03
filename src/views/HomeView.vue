@@ -6,7 +6,7 @@ import { getDailyQuote } from '../services/dailyQuote';
 import { identity } from '../services/identity';
 
 const router = useRouter();
-const { progress, audio, wrongWords, nextNewDay, progressSummary, updateAudio, prepareDay } = useLearningStore();
+const { progress, wrongWords, nextNewDay, progressSummary, prepareDay } = useLearningStore();
 const installPrompt = ref(null);
 const dailyQuote = ref('把今天的 20 个词，变成明天的底气。');
 const installVisible = computed(() => !!installPrompt.value && !window.matchMedia?.('(display-mode: standalone)').matches);
@@ -38,6 +38,5 @@ onUnmounted(() => {
     <header class="hero"><p class="eyebrow">CET-4 · 45天词汇</p><h1>今天继续学习</h1><p>{{ dailyQuote }}</p></header>
     <section class="dashboard-grid"><div class="card today-card"><p class="eyebrow">TODAY'S PLAN</p><h2>{{ nextNewDay ? `Day ${nextNewDay.day}` : '45 天已完成' }}</h2><p>{{ nextNewDay ? `${nextNewDay.count} 个新词和一篇语境文章` : '可以去错词本继续复习。' }}</p><button class="primary full-button" @click="router.push({ name: nextNewDay ? 'setup' : 'wrongbook', params: nextNewDay ? { day: nextNewDay.day } : {} })">{{ nextNewDay ? '开始今日学习' : '复习错词' }}</button></div><div class="card progress-card"><p class="eyebrow">YOUR PROGRESS</p><div class="dashboard-stats"><div><b>{{ progressSummary.learnedDays }}</b><span>/ 45 天</span></div><div><b>{{ progressSummary.practicedWords }}</b><span>已练单词</span></div><div><b>{{ wrongWords.length }}</b><span>错词</span></div></div><button class="secondary full-button" @click="router.push({ name: 'words' })">查看 45 天计划</button></div></section>
     <div class="quick-actions"><button class="secondary" @click="router.push({ name: 'articles' })">📖 每日文章</button><button class="secondary" @click="router.push({ name: 'wrongbook' })">错词本 {{ wrongWords.length }}</button><button class="secondary" @click="router.push({ name: 'account' })">我的设置</button></div>
-    <div class="audio-setting"><label><input v-model="audio.auto" type="checkbox" @change="updateAudio"> 自动播放</label><label>声音<select v-model="audio.accent" @change="updateAudio"><option value="us">美式</option><option value="uk">英式</option></select></label><span>固定音频缺失时使用手机发音</span></div>
   </section></main>
 </template>
