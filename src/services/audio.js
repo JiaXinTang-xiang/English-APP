@@ -55,19 +55,35 @@ export function previewKeyboardSound() {
 }
 
 export function playWord(word, accent = currentSettings.accent) {
-  const safe = String(word).toLowerCase().replace(/[^a-z0-9'-]/g, '');
-  const source = `./audio/${accent}/${safe}.mp3`;
-  const audio = new Audio(source);
+  const text = String(word).trim();
+  if (!text || typeof Audio === 'undefined') return;
+  const remote = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=${accent === 'uk' ? 1 : 2}`;
+  const safe = text.toLowerCase().replace(/[^a-z0-9'-]/g, '');
+  const local = `/audio/${accent}/${safe}.mp3`;
+  const audio = new Audio();
+  let localTried = false;
+  audio.preload = 'auto';
   audio.onerror = () => {
-    if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(word);
-    utterance.lang = accent === 'uk' ? 'en-GB' : 'en-US';
-    utterance.rate = 0.82;
-    window.speechSynthesis.speak(utterance);
+    if (!localTried) {
+      localTried = true;
+      audio.src = local;
+      void audio.play().catch(() => fallbackSpeech(text, accent));
+      return;
+    }
+    fallbackSpeech(text, accent);
   };
   audio.volume = Math.max(0, Math.min(1, Number(currentSettings.wordVolume) / 100));
-  audio.play().catch(() => {});
+  audio.src = remote;
+  void audio.play().catch(() => { audio.src = local; void audio.play().catch(() => fallbackSpeech(text, accent)); });
+}
+
+function fallbackSpeech(text, accent) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = accent === 'uk' ? 'en-GB' : 'en-US';
+  utterance.rate = 0.82;
+  window.speechSynthesis.speak(utterance);
 }
 
 export function previewWord() { playWord('example', currentSettings.accent); }
