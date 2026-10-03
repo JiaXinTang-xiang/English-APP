@@ -1,7 +1,7 @@
 import { getJson, setJson } from './storage';
 
 const AUDIO_KEY = 'cet4-audio-settings-v1';
-const defaults = { auto: false, accent: 'us', keyboard: false, keyboardSound: '机械键盘2', keyboardVolume: 55 };
+const defaults = { auto: false, accent: 'us', wordVolume: 85, keyboard: false, keyboardSound: '机械键盘2', keyboardVolume: 55 };
 let currentSettings = { ...defaults };
 let keyboardPool = [];
 let keyboardIndex = 0;
@@ -47,6 +47,13 @@ export function playKeyboardSound() {
   void audio.play().catch(() => {});
 }
 
+export function previewKeyboardSound() {
+  const wasEnabled = currentSettings.keyboard;
+  currentSettings.keyboard = true;
+  playKeyboardSound();
+  currentSettings.keyboard = wasEnabled;
+}
+
 export function playWord(word, accent = currentSettings.accent) {
   const safe = String(word).toLowerCase().replace(/[^a-z0-9'-]/g, '');
   const source = `./audio/${accent}/${safe}.mp3`;
@@ -59,5 +66,8 @@ export function playWord(word, accent = currentSettings.accent) {
     utterance.rate = 0.82;
     window.speechSynthesis.speak(utterance);
   };
+  audio.volume = Math.max(0, Math.min(1, Number(currentSettings.wordVolume) / 100));
   audio.play().catch(() => {});
 }
+
+export function previewWord() { playWord('example', currentSettings.accent); }
