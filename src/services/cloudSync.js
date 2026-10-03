@@ -79,13 +79,13 @@ export async function pushProgress(progress, audio) {
   const writes = [];
   if (wordRows.length) writes.push(supabase.from('word_progress').upsert(wordRows, { onConflict: 'user_id,level,word' }));
   if (dayRows.length) writes.push(supabase.from('day_progress').upsert(dayRows, { onConflict: 'user_id,level,day' }));
-  const settings = { user_id: user.id, auto_play: Boolean(audio?.auto), accent: audio?.accent || 'us', word_volume: Number(audio?.wordVolume ?? 85), keyboard_sound: Boolean(audio?.keyboard), keyboard_sound_file: audio?.keyboardSound || '机械键盘2', keyboard_volume: Number(audio?.keyboardVolume ?? 55), updated_at: new Date().toISOString() };
+  const settings = { user_id: user.id, auto_play: Boolean(audio?.auto), accent: audio?.accent || 'us', word_volume: Number(audio?.wordVolume ?? 85), keyboard_sound: Boolean(audio?.keyboard), keyboard_sound_file: audio?.keyboardSound || '机械键盘2', keyboard_volume: Number(audio?.keyboardVolume ?? 55), feedback_sound: audio?.feedback !== false, feedback_volume: Number(audio?.feedbackVolume ?? 55), updated_at: new Date().toISOString() };
   writes.push(supabase.from('user_settings').upsert(settings, { onConflict: 'user_id' }));
   const results = await Promise.all(writes);
   const failed = results.find(result => result.error);
   if (failed) {
     const message = failed.error?.message || '';
-    if (/word_volume|keyboard_sound|keyboard_volume|column/i.test(message)) {
+    if (/word_volume|keyboard_sound|keyboard_volume|feedback_sound|column/i.test(message)) {
       const fallback = await supabase.from('user_settings').upsert({ user_id: user.id, auto_play: settings.auto_play, accent: settings.accent, updated_at: settings.updated_at }, { onConflict: 'user_id' });
       if (fallback.error) throw fallback.error;
     } else throw failed.error;
