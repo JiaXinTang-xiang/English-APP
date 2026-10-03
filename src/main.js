@@ -14,4 +14,17 @@ dataScript.onload = async () => {
 };
 document.head.appendChild(dataScript);
 
-if (import.meta.env.PROD && 'serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+    .then(registration => {
+      void registration.update();
+    })
+    .catch(() => {});
+}
