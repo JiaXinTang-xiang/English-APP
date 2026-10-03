@@ -1,6 +1,6 @@
 # 四级随机背词（CET-4 Vocab）
 
-一个四级词汇背单词 PWA，支持随机抽背、艾宾浩斯遗忘曲线复习、错词本。纯 HTML/CSS/JS，零依赖。
+一个基于 Vue 3 + Vite 的四级词汇背单词 PWA，支持随机抽背、艾宾浩斯遗忘曲线复习、错词本和统一音频接口。
 
 ## 功能
 
@@ -20,13 +20,23 @@
 ## 开发
 
 ```bash
-# 词表数据由 export_vocab.py 从 docx 源文件生成
-python export_vocab.py
+npm install
+npm run dev
 ```
 
-- `vocab-data.js`：词表数据（生成产物，45 天词表）
+生产构建：
+
+```bash
+npm run build:web
+```
+
+- `src/App.vue`：Vue 主应用和学习流程
+- `src/services/audio.js`：统一音频播放模块
+- `public/vocab-data.js`：网页构建使用的词表数据
+- `vocab-data.js`：由文档生成的源词表数据
 - `export_vocab.py`：从 `四级核心词Day1-Day45/*.docx` 重新生成词表
-- `sw.js`：离线缓存，改代码后记得把 `CACHE` 版本号 +1
+- `public/sw.js`：离线缓存
+- `public/audio/us`、`public/audio/uk`：统一美式/英式 MP3 音频目录
 
 ## Android App
 
@@ -52,6 +62,6 @@ cd android
 ./gradlew assembleDebug
 ```
 
-生成的 APK 位于 `android/app/build/outputs/apk/debug/app-debug.apk`。`www/` 是构建中间目录，不提交到 Git；每次修改网页代码后重新执行 `npm run android:sync` 即可同步到 Android 工程。
+生成的 APK 位于 `android/app/build/outputs/apk/debug/app-debug.apk`。`dist/` 是 Vite 构建目录，不提交到 Git；每次修改 Vue 代码后重新执行 `npm run android:sync` 即可同步到 Android 工程。
 
 当前 App ID 为 `com.jiaxintang.cet4vocab`，后续增加六级时只需扩展词库数据，不需要重写 Android 外壳。

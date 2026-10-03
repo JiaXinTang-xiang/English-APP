@@ -1,129 +1,13 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#315c4e">
-  <meta name="description" content="四级词汇随机抽背与错词强化">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="四级背词">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css">
-  <style>
-    .task-block{margin:14px 0 22px}.task-title{margin:0 0 10px;font-size:18px}.word-list{display:grid;gap:9px}.word-row{display:grid;grid-template-columns:minmax(110px,.8fr) 1.2fr;align-items:stretch;border:1px solid var(--line);border-radius:13px;overflow:hidden;background:#fff}.word-en{padding:13px;font-weight:800;overflow-wrap:anywhere}.meaning-cover{border:0;border-left:1px solid var(--line);padding:11px;background:repeating-linear-gradient(135deg,#dfe7e3,#dfe7e3 8px,#edf2ef 8px,#edf2ef 16px);color:#60736d;font-size:13px}.meaning-cover.revealed{background:#f4f7f5;color:var(--ink);text-align:left}.review-note{font-size:12px;color:var(--muted);margin-top:4px}
-  </style>
-  <title>四级随机背词</title>
-</head>
-<body>
-  <main class="shell">
-    <section id="home" class="view active">
-      <button id="installApp" class="install-app hidden" type="button">⬇ 安装到手机</button>
-      <header class="hero">
-        <p class="eyebrow">CET-4 · 45天词汇</p>
-        <h1>今天背哪一天？</h1>
-        <p id="heroQuote">前路浩浩荡荡，万事尽可期待。</p>
-      </header>
-      <div class="home-actions">
-        <button id="randomDay" class="primary">领取今日任务</button>
-        <button id="wrongBook" class="secondary">错词本 <span id="wrongCount">0</span></button>
-      </div>
-      <div class="audio-setting">
-        <label><input id="autoSpeak" type="checkbox"> 进入题目时自动播放发音</label>
-        <span>也可以点击题目旁的 🔊 手动播放</span>
-      </div>
-      <div id="dayGrid" class="day-grid"></div>
-    </section>
-
-    <section id="daily" class="view">
-      <button class="back" data-back="home">← 返回45天</button>
-      <header class="hero">
-        <p class="eyebrow">EBBINGHAUS REVIEW</p>
-        <h1>今日任务</h1>
-        <p id="dailyDate"></p>
-      </header>
-      <div class="card">
-        <div class="task-block">
-          <h3 class="task-title">今日要背的单词</h3>
-          <div id="todayNew" class="day-grid"></div>
-          <p id="newEmpty" class="hint hidden">45天新词已经全部完成。</p>
-        </div>
-        <div class="task-block">
-          <h3 class="task-title">要复习的单词</h3>
-          <div id="dailyDays" class="day-grid"></div>
-          <p id="dailyEmpty" class="hint hidden">今天暂无到期复习。</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="wrongbook" class="view">
-      <button class="back" data-back="home">← 返回45天</button>
-      <header class="hero">
-        <p class="eyebrow">MISTAKE BOOK</p>
-        <h1>错词本</h1>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-          <p style="margin:0">点击右侧遮罩，查看中文意思。</p>
-          <button id="toggleAllMeanings" class="secondary" style="padding:8px 12px;white-space:nowrap" aria-label="显示或隐藏全部释义">👁 显示全部</button>
-        </div>
-      </header>
-      <div id="wrongWordList" class="word-list"></div>
-      <p id="wrongEmpty" class="card hint hidden">错词本还是空的。</p>
-    </section>
-
-    <section id="setup" class="view">
-      <button class="back" data-back="home">← 返回45天</button>
-      <div class="card setup-card">
-        <p id="setupDay" class="eyebrow"></p>
-        <h2>选择抽背方式</h2>
-        <button class="mode" data-mode="choice"><b>英译中</b><span>看英文，选择中文释义</span></button>
-        <button class="mode" data-mode="spell"><b>中译英</b><span>看中文，输入英文拼写</span></button>
-        <button class="mode" data-mode="mixed"><b>混合训练</b><span>两种题型随机出现</span></button>
-        <label class="count-label">本轮题数
-          <select id="questionCount"><option>10</option><option selected>20</option><option>30</option><option>50</option></select>
-        </label>
-        <div id="setupVocab" class="task-block">
-          <h3 class="task-title">本 Day 单词</h3>
-          <div id="setupWordList" class="word-list"></div>
-        </div>
-      </div>
-    </section>
-
-    <section id="quiz" class="view">
-      <div class="quiz-top">
-        <button id="quit" class="back">× 退出</button>
-        <span id="quizLabel"></span>
-        <span id="progressText"></span>
-      </div>
-      <div class="progress"><i id="progressBar"></i></div>
-      <article class="card question-card">
-        <p id="promptLabel" class="eyebrow"></p>
-        <h2 id="prompt"></h2>
-        <p id="hint" class="hint"></p>
-        <form id="spellForm" class="answer-area hidden">
-          <input id="spellInput" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="输入英文单词">
-          <button class="primary" type="submit">确认</button>
-        </form>
-        <div id="choices" class="choices hidden"></div>
-        <div id="feedback" class="feedback hidden"></div>
-        <button id="next" class="primary hidden">下一题</button>
-      </article>
-    </section>
-
-    <section id="summary" class="view">
-      <div class="card summary-card">
-        <p class="eyebrow">本轮完成</p>
-        <h2 id="summaryTitle"></h2>
-        <div class="stats"><div><b id="rightStat"></b><span>答对</span></div><div><b id="wrongStat"></b><span>答错</span></div><div><b id="rateStat"></b><span>正确率</span></div></div>
-        <h3>本轮错词</h3>
-        <div id="mistakeList" class="mistakes"></div>
-        <button id="retryWrong" class="primary">只练本轮错词</button>
-        <button id="summaryHome" class="secondary">返回首页</button>
-      </div>
-    </section>
-  </main>
-  <script src="vocab-data.js"></script>
-  <script src="app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#315c4e" />
+    <meta name="description" content="四级词汇随机抽背与错词强化" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>四级随机背词</title>
+  </head>
+  <body><div id="app"></div><script type="module" src="/src/main.js"></script></body>
 </html>
