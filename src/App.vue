@@ -1,7 +1,5 @@
-<template>
-  <RouterView />
-</template>
-
 <script setup>
-import { RouterView } from 'vue-router';
+import AppShell from './layouts/AppShell.vue';
 </script>
+
+<template><AppShell /></template>

@@ -23,7 +23,8 @@ export async function initializeIdentity() {
     const { data } = await supabase.auth.getSession();
     user.value = data.session?.user || null;
   }
-  mode.value = user.value ? 'account' : (await getItem(MODE_KEY) === 'guest' ? 'guest' : 'unknown');
+  mode.value = user.value ? 'account' : 'guest';
+  if (!user.value && (await getItem(MODE_KEY)) !== 'guest') await setItem(MODE_KEY, 'guest');
   if (supabaseEnabled && !authSubscription) {
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       user.value = session?.user || null;
