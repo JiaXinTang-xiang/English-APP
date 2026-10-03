@@ -2,11 +2,11 @@ from pathlib import Path
 import json, re, sys
 from docx import Document
 
-# 词表源目录：默认取本脚本上一级的「四级核心词Day1-Day45」文件夹；
+# 词表源目录：默认取本脚本同级的「四级核心词Day1-Day45」文件夹；
 # 也可在命令行传入自定义路径，例如：
 #   python export_vocab.py "D:/你的路径/词表文件夹"
 SCRIPT_DIR = Path(__file__).resolve().parent
-DEFAULT_DOCS = SCRIPT_DIR.parent / "四级核心词Day1-Day45"
+DEFAULT_DOCS = SCRIPT_DIR / "四级核心词Day1-Day45"
 DOCS = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_DOCS
 OUT = SCRIPT_DIR / 'vocab-data.js'
 

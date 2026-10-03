@@ -1,1 +1,28 @@
-# English-APP
+# 四级随机背词（CET-4 Vocab）
+
+一个四级词汇背单词 PWA，支持随机抽背、艾宾浩斯遗忘曲线复习、错词本。纯 HTML/CSS/JS，零依赖。
+
+## 功能
+
+- 45 天词表，约 2250 词
+- 三种题型：英译中 / 中译英 / 混合训练
+- 艾宾浩斯复习（1 / 2 / 4 / 7 / 15 / 30 天间隔）
+- 错词本（连续答对 3 次自动移出）
+- 拼写纠错（编辑距离逐字母对比）
+- 离线可用（PWA，Service Worker 缓存）
+
+## 使用
+
+- 在线：https://JiaXinTang-xiang.github.io/English-APP/
+- 安装到手机：用手机浏览器打开上面的地址，选择「添加到主屏幕」，即可像 App 一样全屏使用、离线可用。
+
+## 开发
+
+```bash
+# 词表数据由 export_vocab.py 从 docx 源文件生成
+python export_vocab.py
+```
+
+- `vocab-data.js`：词表数据（生成产物，45 天词表）
+- `export_vocab.py`：从 `四级核心词Day1-Day45/*.docx` 重新生成词表
+- `sw.js`：离线缓存，改代码后记得把 `CACHE` 版本号 +1
