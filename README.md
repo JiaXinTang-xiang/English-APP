@@ -30,7 +30,10 @@ npm run dev
 npm run build:web
 ```
 
-- `src/App.vue`：Vue 主应用和学习流程
+- `src/views/`：首页、今日任务、训练、错词本和总结页面
+- `src/router/index.js`：Vue Router Hash 路由
+- `src/stores/learning.js`：学习进度与训练状态
+- `src/services/storage.js`：Web LocalStorage / Android Preferences 统一存储
 - `src/services/audio.js`：统一音频播放模块
 - `public/vocab-data.js`：网页构建使用的词表数据
 - `vocab-data.js`：由文档生成的源词表数据
@@ -54,12 +57,10 @@ npm run android:sync
 
 然后用 Android Studio 打开 `android/`，连接 Android 手机后运行，或在 Android Studio 中生成 APK。
 
-命令行构建 Debug APK（需要 Android SDK、JDK 17 和可用的 Gradle 下载环境）：
+命令行构建 Debug APK（Capacitor 8 需要 Android SDK 36、JDK 21 和可用的 Gradle 下载环境）：
 
 ```bash
-npm run android:sync
-cd android
-./gradlew assembleDebug
+npm run android:apk
 ```
 
 生成的 APK 位于 `android/app/build/outputs/apk/debug/app-debug.apk`。`dist/` 是 Vite 构建目录，不提交到 Git；每次修改 Vue 代码后重新执行 `npm run android:sync` 即可同步到 Android 工程。
