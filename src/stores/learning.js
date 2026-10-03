@@ -158,6 +158,11 @@ export function useLearningStore() {
       if (!user) { cloudSync.status = 'idle'; return { synced: false, reason: 'signed-out' }; }
       const cloud = await pullProgress();
       progress.value = mergeProgress(progress.value, cloudProgressToLocal(cloud));
+      if (cloud?.settings) {
+        const settings = cloud.settings;
+        audio.value = { ...audio.value, auto: Boolean(settings.auto_play ?? audio.value.auto), accent: settings.accent || audio.value.accent, wordVolume: Number(settings.word_volume ?? audio.value.wordVolume ?? 85), keyboard: Boolean(settings.keyboard_sound ?? audio.value.keyboard), keyboardSound: settings.keyboard_sound_file || audio.value.keyboardSound, keyboardVolume: Number(settings.keyboard_volume ?? audio.value.keyboardVolume ?? 55) };
+        await saveAudioSettings(audio.value);
+      }
       await setJson(PROGRESS_KEY, progress.value);
       await pushProgress(progress.value, audio.value);
       cloudSync.status = 'synced'; cloudSync.lastSyncedAt = new Date().toISOString();
