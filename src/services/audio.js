@@ -1,8 +1,10 @@
 import { getJson, setJson } from './storage';
 
 const AUDIO_KEY = 'cet4-audio-settings-v1';
-const defaults = { auto: false, accent: 'us' };
+const defaults = { auto: false, accent: 'us', keyboard: false, keyboardSound: '机械键盘2', keyboardVolume: 55 };
 let currentSettings = { ...defaults };
+let keyboardPool = [];
+let keyboardIndex = 0;
 
 export async function initializeAudioSettings() {
   currentSettings = { ...defaults, ...await getJson(AUDIO_KEY, defaults) };
@@ -12,7 +14,37 @@ export async function initializeAudioSettings() {
 export function getAudioSettings() { return { ...currentSettings }; }
 export function saveAudioSettings(value) {
   currentSettings = { ...defaults, ...value };
+  keyboardPool = [];
+  keyboardIndex = 0;
   return setJson(AUDIO_KEY, currentSettings);
+}
+
+const keyboardSources = {
+  '机械键盘': ['jixie/机械0.mp3', 'jixie/机械1.mp3', 'jixie/机械2.mp3', 'jixie/机械3.mp3'],
+  '机械键盘1': ['机械键盘1.mp3'],
+  '机械键盘2': ['机械键盘2.mp3'],
+  '老式机械键盘': ['老式机械键盘.mp3'],
+  '笔记本键盘': ['笔记本键盘.mp3']
+};
+
+function prepareKeyboardAudio() {
+  const files = keyboardSources[currentSettings.keyboardSound] || keyboardSources['机械键盘2'];
+  keyboardPool = files.flatMap(file => Array.from({ length: files.length === 1 ? 4 : 1 }, () => {
+    const audio = new Audio(`/audio/key-sounds/${file}`);
+    audio.preload = 'auto';
+    audio.volume = Math.max(0, Math.min(1, Number(currentSettings.keyboardVolume) / 100));
+    return audio;
+  }));
+  keyboardIndex = 0;
+}
+
+export function playKeyboardSound() {
+  if (!currentSettings.keyboard || typeof Audio === 'undefined') return;
+  if (!keyboardPool.length) prepareKeyboardAudio();
+  const audio = keyboardPool[keyboardIndex++ % keyboardPool.length];
+  audio.currentTime = 0;
+  audio.volume = Math.max(0, Math.min(1, Number(currentSettings.keyboardVolume) / 100));
+  void audio.play().catch(() => {});
 }
 
 export function playWord(word, accent = currentSettings.accent) {

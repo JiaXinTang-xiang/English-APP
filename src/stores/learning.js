@@ -1,6 +1,6 @@
 import { computed, reactive, ref } from 'vue';
 import { getJson, removeItem, setJson } from '../services/storage';
-import { initializeAudioSettings, playWord, saveAudioSettings } from '../services/audio';
+import { initializeAudioSettings, playKeyboardSound, playWord, saveAudioSettings } from '../services/audio';
 import { cloudProgressToLocal, getCloudUser, mergeProgress, pullProgress, pushProgress } from '../services/cloudSync';
 
 const PROGRESS_KEY = 'cet4-progress-v1';
@@ -60,6 +60,7 @@ export function useLearningStore() {
     return progress.value.words[key];
   }
   function speak(word) { playWord(word.word, audio.value.accent); }
+  function playKeySound() { playKeyboardSound(); }
   function updateAudio() {
     const saved = saveAudioSettings(audio.value);
     void pushProgress(progress.value, audio.value).catch(() => {});
@@ -171,7 +172,7 @@ export function useLearningStore() {
     await removeItem(PROGRESS_KEY);
   }
 
-  return { days, progress, audio, cloudSync, progressSummary, session, dayInfo, wrongWords, sessionMistakes, nextNewDay, dueReviews, today, meta, speak, updateAudio, prepareDay, prepareCustom, sourceWords, start, answer, finish, next, syncWithCloud, clearLocalProgress };
+  return { days, progress, audio, cloudSync, progressSummary, session, dayInfo, wrongWords, sessionMistakes, nextNewDay, dueReviews, today, meta, speak, playKeySound, updateAudio, prepareDay, prepareCustom, sourceWords, start, answer, finish, next, syncWithCloud, clearLocalProgress };
 }
 
 function today() { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }

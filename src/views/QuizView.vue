@@ -1,11 +1,14 @@
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLearningStore } from '../stores/learning';
 
 const router = useRouter();
-const { session, speak, answer, finish, next } = useLearningStore();
+const { session, speak, answer, finish, next, playKeySound } = useLearningStore();
 onMounted(() => { if (!session.current) router.replace({ name: 'home' }); });
+function onKeydown(event) { if (session.questionType === 'spell' && event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) playKeySound(); }
+onMounted(() => window.addEventListener('keydown', onKeydown));
+onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 function submitSpell() {
   const typed = session.typed.trim();
   answer(typed.toLowerCase() === session.current.word.toLowerCase(), typed);
