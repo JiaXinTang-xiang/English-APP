@@ -7,7 +7,8 @@ const SHELL = [
   './icon-512.png',
   './icon-maskable-512.png',
   './apple-touch-icon.png',
-  './vocab-data.js'
+  './vocab-data.js',
+  './articles-data.js'
 ];
 
 self.addEventListener('install', event => {
