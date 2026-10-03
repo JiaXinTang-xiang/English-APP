@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">四级背词</string>
+    <string name="title_activity_main">四级背词</string>
+    <string name="package_name">com.jiaxintang.cet4vocab</string>
+    <string name="custom_url_scheme">com.jiaxintang.cet4vocab</string>
+</resources>

@@ -1,0 +1,22 @@
+{
+  "name": "cet4-vocab-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "四级随机背词：GitHub Pages PWA 与 Android App 共用前端",
+  "scripts": {
+    "build:web": "node scripts/build-web.mjs",
+    "check": "node scripts/check-project.mjs",
+    "android:copy": "npm run build:web && cap copy android",
+    "android:sync": "npm run build:web && cap sync android",
+    "android:open": "cap open android",
+    "android:run": "cap run android",
+    "cap": "cap"
+  },
+  "dependencies": {
+    "@capacitor/android": "^5.7.8",
+    "@capacitor/core": "^5.7.8"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^5.7.8"
+  }
+}
