@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLearningStore } from '../stores/learning';
 import { getDailyQuote } from '../services/dailyQuote';
+import { identity } from '../services/identity';
 
 const router = useRouter();
 const { days, progress, audio, wrongWords, updateAudio, prepareDay } = useLearningStore();
@@ -33,8 +34,9 @@ onUnmounted(() => {
 <template>
   <main class="shell"><section class="view active">
     <button v-if="installVisible" class="install-app" @click="install">⬇ 安装到手机</button>
+    <button class="account-pill" @click="router.push({ name: 'account' })"><span>{{ identity.isGuest.value ? '游' : '云' }}</span>{{ identity.label.value }}</button>
     <header class="hero"><p class="eyebrow">CET-4 · 45天词汇</p><h1>今天背哪一天？</h1><p>{{ dailyQuote }}</p></header>
-    <div class="home-actions"><button class="primary" @click="router.push({ name: 'daily' })">领取今日任务</button><button class="secondary" @click="router.push({ name: 'wrongbook' })">错词本 {{ wrongWords.length }}</button></div><button class="secondary full-button" @click="router.push({ name: 'auth' })">登录 / 多设备同步</button>
+    <div class="home-actions"><button class="primary" @click="router.push({ name: 'daily' })">领取今日任务</button><button class="secondary" @click="router.push({ name: 'wrongbook' })">错词本 {{ wrongWords.length }}</button></div>
     <div class="audio-setting"><label><input v-model="audio.auto" type="checkbox" @change="updateAudio"> 自动播放</label><label>声音<select v-model="audio.accent" @change="updateAudio"><option value="us">美式</option><option value="uk">英式</option></select></label><span>固定音频缺失时使用手机发音</span></div>
     <div class="day-grid"><button v-for="day in days" :key="day.day" class="day" :class="{ done: progress.days[day.day] }" @click="openDay(day.day)">Day {{ day.day }}<small>{{ day.count }}词</small></button></div>
   </section></main>

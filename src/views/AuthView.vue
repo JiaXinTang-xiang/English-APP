@@ -1,7 +1,8 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { getCloudUser, signIn, signUp } from '../services/cloudSync';
+import { signIn, signUp } from '../services/cloudSync';
+import { chooseAccount, chooseGuest } from '../services/identity';
 import { supabaseEnabled } from '../services/supabase';
 import { useLearningStore } from '../stores/learning';
 
@@ -9,29 +10,76 @@ const router = useRouter();
 const { syncWithCloud } = useLearningStore();
 const email = ref('');
 const password = ref('');
-const mode = ref('signin');
+const formMode = ref(null);
 const busy = ref(false);
 const message = ref('');
+
+function openForm(nextMode) {
+  formMode.value = nextMode;
+  message.value = '';
+}
+
+async function enterAsGuest() {
+  busy.value = true;
+  await chooseGuest();
+  await router.replace({ name: 'home' });
+  busy.value = false;
+}
 
 async function submit() {
   message.value = '';
   busy.value = true;
   try {
-    if (!supabaseEnabled) throw new Error('还未配置 Supabase，请先在 Vercel 环境变量中添加 URL 和 anon key。');
-    if (mode.value === 'signin') await signIn(email.value.trim(), password.value);
-    else await signUp(email.value.trim(), password.value);
-    const user = await getCloudUser();
-    if (user) await syncWithCloud();
-    message.value = user ? `已登录：${user.email}` : '注册成功，请检查邮箱确认后登录。';
-    if (user) router.push({ name: 'home' });
+    if (!supabaseEnabled) throw new Error('云端账号服务尚未配置，可先使用游客模式。');
+    const data = formMode.value === 'signin'
+      ? await signIn(email.value.trim(), password.value)
+      : await signUp(email.value.trim(), password.value);
+    if (!data.session) {
+      message.value = '注册成功！请打开邮箱完成确认，再回来登录。';
+      formMode.value = 'signin';
+      return;
+    }
+    await chooseAccount(data.user);
+    await syncWithCloud();
+    await router.replace({ name: 'home' });
   } catch (error) {
-    message.value = error.message || '操作失败，请检查邮箱和密码。';
+    message.value = friendlyError(error);
   } finally {
     busy.value = false;
   }
 }
+
+function friendlyError(error) {
+  const value = error?.message || '';
+  if (value.includes('Invalid login credentials')) return '邮箱或密码不正确。';
+  if (value.includes('already registered')) return '这个邮箱已注册，请直接登录。';
+  if (value.includes('Password')) return '密码至少需要 6 位。';
+  return value || '操作失败，请检查网络后重试。';
+}
 </script>
 
 <template>
-  <main class="shell"><section class="view active"><button class="back" @click="router.push({ name: 'home' })">← 返回首页</button><div class="card auth-card"><p class="eyebrow">SUPABASE CLOUD</p><h1>{{ mode === 'signin' ? '登录同步' : '创建账号' }}</h1><p class="hint">登录后可在不同手机同步学习进度；不登录仍可离线使用。</p><form class="auth-form" @submit.prevent="submit"><input v-model="email" type="email" autocomplete="email" placeholder="邮箱" required><input v-model="password" type="password" autocomplete="current-password" placeholder="密码（至少6位）" minlength="6" required><button class="primary" :disabled="busy">{{ busy ? '处理中…' : mode === 'signin' ? '登录' : '注册' }}</button></form><p v-if="message" class="feedback" :class="message.startsWith('已登录') ? 'good' : 'bad'">{{ message }}</p><button class="secondary full-button" @click="mode = mode === 'signin' ? 'signup' : 'signin'">{{ mode === 'signin' ? '没有账号？注册' : '已有账号？登录' }}</button></div></section></main>
+  <main class="welcome-shell"><section class="welcome-card">
+    <div class="welcome-mark">词</div>
+    <p class="eyebrow">CET-4 VOCABULARY</p>
+    <h1>四级背词</h1>
+    <p class="welcome-copy">每天进步一点点，学习记录由你自己掌握。</p>
+
+    <div v-if="!formMode" class="welcome-actions">
+      <button class="primary" @click="openForm('signin')">邮箱登录</button>
+      <button class="secondary" @click="openForm('signup')">创建账号</button>
+      <button class="guest-button" :disabled="busy" @click="enterAsGuest">以游客身份使用</button>
+    </div>
+
+    <form v-else class="auth-form" @submit.prevent="submit">
+      <div class="form-heading"><button type="button" class="back-inline" @click="formMode = null">←</button><strong>{{ formMode === 'signin' ? '邮箱登录' : '创建账号' }}</strong></div>
+      <input v-model="email" type="email" autocomplete="email" placeholder="邮箱地址" required>
+      <input v-model="password" type="password" :autocomplete="formMode === 'signin' ? 'current-password' : 'new-password'" placeholder="密码（至少6位）" minlength="6" required>
+      <button class="primary" :disabled="busy">{{ busy ? '处理中…' : formMode === 'signin' ? '登录并合并进度' : '注册并保存进度' }}</button>
+      <p v-if="message" class="feedback" :class="message.startsWith('注册成功') ? 'good' : 'bad'">{{ message }}</p>
+      <button type="button" class="text-button" @click="openForm(formMode === 'signin' ? 'signup' : 'signin')">{{ formMode === 'signin' ? '没有账号？立即注册' : '已有账号？直接登录' }}</button>
+    </form>
+
+    <div class="identity-notes"><span>📱 游客记录保存在当前设备</span><span>☁️ 账号登录可跨手机同步</span></div>
+  </section></main>
 </template>

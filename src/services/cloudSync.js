@@ -84,3 +84,51 @@ export function cloudProgressToLocal(cloud) {
   }
   return { words, days, daySchedule };
 }
+
+export function mergeProgress(local = {}, cloud = {}) {
+  const merged = { words: {}, days: {}, daySchedule: {} };
+  const localWords = local.words || {}, cloudWords = cloud.words || {};
+  for (const key of new Set([...Object.keys(localWords), ...Object.keys(cloudWords)])) {
+    const first = localWords[key] || {}, second = cloudWords[key] || {};
+    const inWrongBook = Boolean(first.inWrongBook || second.inWrongBook);
+    const reviewCounts = [first.wrongReviewCount, second.wrongReviewCount].filter(value => value !== undefined);
+    merged.words[key] = compact({
+      right: Math.max(first.right || 0, second.right || 0),
+      wrong: Math.max(first.wrong || 0, second.wrong || 0),
+      inWrongBook,
+      wrongReviewCount: reviewCounts.length
+        ? (inWrongBook ? Math.min(...reviewCounts) : Math.max(...reviewCounts))
+        : 0,
+      lastRight: latestDate(first.lastRight, second.lastRight),
+      lastWrong: latestDate(first.lastWrong, second.lastWrong),
+      wrongDay: first.wrongDay ?? second.wrongDay
+    });
+  }
+
+  const localDays = local.days || {}, cloudDays = cloud.days || {};
+  for (const day of new Set([...Object.keys(localDays), ...Object.keys(cloudDays)])) {
+    merged.days[day] = Math.max(localDays[day] || 0, cloudDays[day] || 0);
+  }
+
+  const localSchedule = local.daySchedule || {}, cloudSchedule = cloud.daySchedule || {};
+  for (const day of new Set([...Object.keys(localSchedule), ...Object.keys(cloudSchedule)])) {
+    const first = localSchedule[day] || {}, second = cloudSchedule[day] || {};
+    merged.daySchedule[day] = {
+      learnedDate: earliestDate(first.learnedDate, second.learnedDate),
+      reviewed: [...new Set([...(first.reviewed || []), ...(second.reviewed || [])])].sort((a, b) => a - b)
+    };
+  }
+  return merged;
+}
+
+function compact(value) {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined));
+}
+
+function latestDate(first, second) {
+  return [first, second].filter(Boolean).sort().at(-1);
+}
+
+function earliestDate(first, second) {
+  return [first, second].filter(Boolean).sort().at(0);
+}

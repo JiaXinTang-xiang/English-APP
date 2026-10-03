@@ -1,12 +1,13 @@
 import { computed, reactive, ref } from 'vue';
-import { getJson, setJson } from '../services/storage';
+import { getJson, removeItem, setJson } from '../services/storage';
 import { initializeAudioSettings, playWord, saveAudioSettings } from '../services/audio';
-import { cloudProgressToLocal, getCloudUser, pullProgress, pushProgress } from '../services/cloudSync';
+import { cloudProgressToLocal, getCloudUser, mergeProgress, pullProgress, pushProgress } from '../services/cloudSync';
 
 const PROGRESS_KEY = 'cet4-progress-v1';
 export const REVIEW_DAYS = [1, 2, 4, 7, 15, 30];
 const progress = ref({ words: {}, days: {}, daySchedule: {} });
 const audio = ref({ auto: false, accent: 'us' });
+const cloudSync = reactive({ status: 'idle', lastSyncedAt: null, error: '' });
 const session = reactive({ selectedDay: null, reviewGap: null, customWords: null, label: '', mode: 'mixed', count: 20, queue: [], index: 0, current: null, questionType: 'choice', choiceOptions: [], answered: false, attempts: 0, right: 0, wrong: 0, mistakes: {}, requeueCounts: {}, requeuedCurrent: false, typed: '', spellingDiff: [], feedback: '' });
 let initialized = false;
 
@@ -42,6 +43,11 @@ export function useLearningStore() {
       return gap ? [{ day: day.day, gap, overdue: elapsed > gap }] : [];
     });
   });
+  const progressSummary = computed(() => ({
+    learnedDays: Object.values(progress.value.days || {}).filter(Boolean).length,
+    practicedWords: Object.keys(progress.value.words || {}).length,
+    wrongWords: wrongWords.value.length
+  }));
 
   function saveProgress() {
     const saved = setJson(PROGRESS_KEY, progress.value);
@@ -143,22 +149,29 @@ export function useLearningStore() {
   }
 
   async function syncWithCloud() {
-    const user = await getCloudUser();
-    if (!user) return { synced: false, reason: 'signed-out' };
-    const cloud = await pullProgress();
-    const hasCloudData = Boolean(cloud?.words?.length || cloud?.days?.length || cloud?.settings);
-    if (hasCloudData) {
-      progress.value = cloudProgressToLocal(cloud);
-      if (cloud.settings) audio.value = { auto: Boolean(cloud.settings.auto_play), accent: cloud.settings.accent || 'us' };
-      await saveProgress();
-      await saveAudioSettings(audio.value);
-    } else {
+    cloudSync.status = 'syncing'; cloudSync.error = '';
+    try {
+      const user = await getCloudUser();
+      if (!user) { cloudSync.status = 'idle'; return { synced: false, reason: 'signed-out' }; }
+      const cloud = await pullProgress();
+      progress.value = mergeProgress(progress.value, cloudProgressToLocal(cloud));
+      await setJson(PROGRESS_KEY, progress.value);
       await pushProgress(progress.value, audio.value);
+      cloudSync.status = 'synced'; cloudSync.lastSyncedAt = new Date().toISOString();
+      return { synced: true, user };
+    } catch (error) {
+      cloudSync.status = navigator.onLine ? 'error' : 'offline';
+      cloudSync.error = error.message || '同步失败';
+      throw error;
     }
-    return { synced: true, user };
   }
 
-  return { days, progress, audio, session, dayInfo, wrongWords, sessionMistakes, nextNewDay, dueReviews, today, meta, speak, updateAudio, prepareDay, prepareCustom, sourceWords, start, answer, finish, next, syncWithCloud };
+  async function clearLocalProgress() {
+    progress.value = { words: {}, days: {}, daySchedule: {} };
+    await removeItem(PROGRESS_KEY);
+  }
+
+  return { days, progress, audio, cloudSync, progressSummary, session, dayInfo, wrongWords, sessionMistakes, nextNewDay, dueReviews, today, meta, speak, updateAudio, prepareDay, prepareCustom, sourceWords, start, answer, finish, next, syncWithCloud, clearLocalProgress };
 }
 
 function today() { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
