@@ -106,8 +106,8 @@ onUnmounted(() => clearInterval(cooldownTimer));
 <template>
   <main class="welcome-shell"><section class="welcome-card">
     <div class="welcome-mark">词</div>
-    <p class="eyebrow">CET-4 VOCABULARY</p>
-    <h1>四级背词</h1>
+    <p class="eyebrow">CET VOCABULARY</p>
+    <h1>词境</h1>
     <p class="welcome-copy">每天进步一点点，学习记录由你自己掌握。</p>
 
     <div v-if="!formMode" class="welcome-actions">

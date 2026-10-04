@@ -1,7 +1,5 @@
 import { supabase, supabaseEnabled } from './supabase';
 
-const LEVEL = 'cet4';
-
 export async function getCloudUser() {
   if (!supabaseEnabled) return null;
   const { data: { user } } = await supabase.auth.getUser();
@@ -44,12 +42,12 @@ export async function signOut() {
   if (error) throw error;
 }
 
-export async function pullProgress() {
+export async function pullProgress(level = 'cet4') {
   const user = await getCloudUser();
   if (!user) return null;
   const [wordsResult, daysResult, settingsResult] = await Promise.all([
-    supabase.from('word_progress').select('*').eq('user_id', user.id).eq('level', LEVEL),
-    supabase.from('day_progress').select('*').eq('user_id', user.id).eq('level', LEVEL),
+    supabase.from('word_progress').select('*').eq('user_id', user.id).eq('level', level),
+    supabase.from('day_progress').select('*').eq('user_id', user.id).eq('level', level),
     supabase.from('user_settings').select('*').eq('user_id', user.id).maybeSingle()
   ]);
   for (const result of [wordsResult, daysResult, settingsResult]) if (result.error) throw result.error;
@@ -61,31 +59,31 @@ export async function pullProgress() {
   };
 }
 
-export async function pushProgress(progress, audio) {
+export async function pushProgress(progress, audio, level = 'cet4') {
   const user = await getCloudUser();
   if (!user) return false;
   const wordRows = Object.entries(progress.words || {}).map(([word, value]) => ({
-    user_id: user.id, level: LEVEL, word,
+    user_id: user.id, level, word,
     right_count: value.right || 0, wrong_count: value.wrong || 0,
     in_wrong_book: Boolean(value.inWrongBook), wrong_review_count: value.wrongReviewCount || 0,
     last_right: value.lastRight || null, last_wrong: value.lastWrong || null,
     wrong_day: value.wrongDay || null, updated_at: new Date().toISOString()
   }));
   const dayRows = Object.entries(progress.daySchedule || {}).map(([day, schedule]) => ({
-    user_id: user.id, level: LEVEL, day: Number(day), learned_date: schedule.learnedDate || null,
+    user_id: user.id, level, day: Number(day), learned_date: schedule.learnedDate || null,
     reviewed_days: schedule.reviewed || [],
     learned_count: progress.days?.[day] || 0, updated_at: new Date().toISOString()
   }));
   const writes = [];
   if (wordRows.length) writes.push(supabase.from('word_progress').upsert(wordRows, { onConflict: 'user_id,level,word' }));
   if (dayRows.length) writes.push(supabase.from('day_progress').upsert(dayRows, { onConflict: 'user_id,level,day' }));
-  const settings = { user_id: user.id, auto_play: Boolean(audio?.auto), accent: audio?.accent || 'us', word_volume: Number(audio?.wordVolume ?? 85), keyboard_sound: Boolean(audio?.keyboard), keyboard_sound_file: audio?.keyboardSound || '机械键盘2', keyboard_volume: Number(audio?.keyboardVolume ?? 55), feedback_sound: audio?.feedback !== false, feedback_volume: Number(audio?.feedbackVolume ?? 55), updated_at: new Date().toISOString() };
+  const settings = { user_id: user.id, auto_play: Boolean(audio?.auto), word_audio: audio?.wordAudio !== false, accent: audio?.accent || 'us', word_volume: Number(audio?.wordVolume ?? 85), playback_rate: Number(audio?.rate ?? 1), loop_audio: Boolean(audio?.loop), show_phonetic: audio?.phonetic !== false, translation_speech: Boolean(audio?.translationSpeech), keyboard_sound: Boolean(audio?.keyboard), keyboard_sound_file: audio?.keyboardSound || '机械键盘2', keyboard_volume: Number(audio?.keyboardVolume ?? 55), feedback_sound: audio?.feedback !== false, feedback_volume: Number(audio?.feedbackVolume ?? 55), updated_at: new Date().toISOString() };
   writes.push(supabase.from('user_settings').upsert(settings, { onConflict: 'user_id' }));
   const results = await Promise.all(writes);
   const failed = results.find(result => result.error);
   if (failed) {
     const message = failed.error?.message || '';
-    if (/word_volume|keyboard_sound|keyboard_volume|feedback_sound|column/i.test(message)) {
+    if (/word_audio|word_volume|playback_rate|loop_audio|show_phonetic|translation_speech|keyboard_sound|keyboard_volume|feedback_sound|column/i.test(message)) {
       const fallback = await supabase.from('user_settings').upsert({ user_id: user.id, auto_play: settings.auto_play, accent: settings.accent, updated_at: settings.updated_at }, { onConflict: 'user_id' });
       if (fallback.error) throw fallback.error;
     } else throw failed.error;

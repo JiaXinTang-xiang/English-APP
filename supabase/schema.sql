@@ -33,7 +33,18 @@ create table if not exists public.day_progress (
 create table if not exists public.user_settings (
   user_id uuid primary key references auth.users(id) on delete cascade,
   auto_play boolean not null default false,
+  word_audio boolean not null default true,
   accent text not null default 'us' check (accent in ('us', 'uk')),
+  word_volume integer not null default 85,
+  playback_rate numeric not null default 1,
+  loop_audio boolean not null default false,
+  show_phonetic boolean not null default true,
+  translation_speech boolean not null default false,
+  keyboard_sound boolean not null default false,
+  keyboard_sound_file text not null default '机械键盘2',
+  keyboard_volume integer not null default 55,
+  feedback_sound boolean not null default true,
+  feedback_volume integer not null default 55,
   updated_at timestamptz not null default now()
 );
 

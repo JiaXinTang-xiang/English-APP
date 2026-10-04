@@ -3,6 +3,8 @@ import App from './App.vue';
 import router from './router';
 import { initializeLearningStore, useLearningStore } from './stores/learning';
 import { identity, initializeIdentity } from './services/identity';
+import { initializeBooks } from './services/books';
+import { initializeAppearance } from './services/appearance';
 import './styles.css';
 
 function loadDataScript(source) {
@@ -16,7 +18,8 @@ function loadDataScript(source) {
 }
 
 Promise.all([loadDataScript('./vocab-data.js'), loadDataScript('./articles-data.js')]).then(async () => {
-  await Promise.all([initializeLearningStore(), initializeIdentity()]);
+  await initializeBooks();
+  await Promise.all([initializeLearningStore(), initializeIdentity(), initializeAppearance()]);
   createApp(App).use(router).mount('#app');
   if (identity.isAccount.value) void useLearningStore().syncWithCloud().catch(() => {});
 }).catch(() => {

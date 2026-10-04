@@ -1,26 +1,42 @@
 import { computed, reactive, ref } from 'vue';
 import { getJson, removeItem, setJson } from '../services/storage';
-import { initializeAudioSettings, playFeedback, playKeyboardSound, playWord, previewFeedback, previewKeyboardSound, previewWord, saveAudioSettings } from '../services/audio';
+import { initializeAudioSettings, playFeedback, playKeyboardSound, playWord, preloadWord, previewFeedback, previewKeyboardSound, previewWord, saveAudioSettings, speakTranslation } from '../services/audio';
 import { cloudProgressToLocal, getCloudUser, mergeProgress, pullProgress, pushProgress } from '../services/cloudSync';
+import { BOOKS, bookState, getBook, getBookDays, selectBook } from '../services/books';
 
-const PROGRESS_KEY = 'cet4-progress-v1';
+const PROGRESS_KEY = 'vocab-progress-v2';
+const LEGACY_PROGRESS_KEY = 'cet4-progress-v1';
 export const REVIEW_DAYS = [1, 2, 4, 7, 15, 30];
-const progress = ref({ words: {}, days: {}, daySchedule: {} });
+const emptyProgress = () => ({ words: {}, days: {}, daySchedule: {} });
+const allProgress = ref({ cet4: emptyProgress(), cet6: emptyProgress() });
+const progress = computed(() => allProgress.value[session.selectedBook] || emptyProgress());
 const audio = ref({ auto: false, accent: 'us' });
 const cloudSync = reactive({ status: 'idle', lastSyncedAt: null, error: '' });
-const session = reactive({ selectedDay: null, reviewGap: null, customWords: null, label: '', mode: 'mixed', count: 20, queue: [], index: 0, current: null, questionType: 'choice', choiceOptions: [], answered: false, attempts: 0, right: 0, wrong: 0, mistakes: {}, requeueCounts: {}, requeuedCurrent: false, typed: '', spellingDiff: [], feedback: '' });
+const session = reactive({ selectedBook: 'cet4', selectedDay: null, reviewGap: null, customWords: null, label: '', mode: 'typing', count: 20, random: true, queue: [], index: 0, current: null, questionType: 'typing', choiceOptions: [], answered: false, attempts: 0, right: 0, wrong: 0, mistakes: {}, requeueCounts: {}, requeuedCurrent: false, typed: '', spellingDiff: [], feedback: '', startedAt: null, finishedAt: null, correctKeys: 0, wrongKeys: 0, letterMistakes: {}, currentWordErrors: 0, typingErrorIndex: -1, typingErrorChar: '', typingLocked: false });
 let initialized = false;
 
 export async function initializeLearningStore() {
   if (initialized) return;
-  const stored = await getJson(PROGRESS_KEY, progress.value);
-  progress.value = { words: stored?.words || {}, days: stored?.days || {}, daySchedule: stored?.daySchedule || {} };
+  const stored = await getJson(PROGRESS_KEY, null);
+  if (stored?.cet4 || stored?.cet6) {
+    allProgress.value = { cet4: normalizeProgress(stored.cet4), cet6: normalizeProgress(stored.cet6) };
+  } else {
+    const legacy = await getJson(LEGACY_PROGRESS_KEY, null);
+    allProgress.value = { cet4: normalizeProgress(legacy), cet6: emptyProgress() };
+    if (legacy) {
+      await setJson(PROGRESS_KEY, allProgress.value);
+      await removeItem(LEGACY_PROGRESS_KEY);
+    }
+  }
+  session.selectedBook = bookState.activeBookId.value;
   audio.value = await initializeAudioSettings();
   initialized = true;
 }
 
 export function useLearningStore() {
-  const days = computed(() => window.CET4_DAYS || []);
+  const books = BOOKS;
+  const currentBook = computed(() => getBook(session.selectedBook));
+  const days = computed(() => getBookDays(session.selectedBook));
   const dayInfo = computed(() => days.value.find(day => day.day === session.selectedDay));
   const wrongWords = computed(() => {
     const map = new Map();
@@ -48,10 +64,21 @@ export function useLearningStore() {
     practicedWords: Object.keys(progress.value.words || {}).length,
     wrongWords: wrongWords.value.length
   }));
+  const sessionStats = computed(() => {
+    const end = session.finishedAt || Date.now();
+    const seconds = session.startedAt ? Math.max(1, Math.round((end - session.startedAt) / 1000)) : 0;
+    const totalKeys = session.correctKeys + session.wrongKeys;
+    return {
+      seconds,
+      wordsPerMinute: seconds ? Math.round((session.right / seconds) * 60) : 0,
+      keyAccuracy: totalKeys ? Math.round((session.correctKeys / totalKeys) * 100) : 0,
+      hardestLetters: Object.entries(session.letterMistakes).sort((a, b) => b[1] - a[1]).slice(0, 5)
+    };
+  });
 
   function saveProgress() {
-    const saved = setJson(PROGRESS_KEY, progress.value);
-    void pushProgress(progress.value, audio.value).catch(() => {});
+    const saved = setJson(PROGRESS_KEY, allProgress.value);
+    void pushProgress(progress.value, audio.value, session.selectedBook).catch(() => {});
     return saved;
   }
   function meta(word) {
@@ -60,6 +87,7 @@ export function useLearningStore() {
     return progress.value.words[key];
   }
   function speak(word) { playWord(word.word, audio.value.accent); }
+  function speakMeaning(word) { speakTranslation(word.meaning); }
   function playKeySound() { playKeyboardSound(); }
   function previewKeySound() { previewKeyboardSound(); }
   function previewWordSound() { previewWord(); }
@@ -67,11 +95,19 @@ export function useLearningStore() {
   function previewAnswerSound(type) { previewFeedback(type); }
   function updateAudio() {
     const saved = saveAudioSettings(audio.value);
-    void pushProgress(progress.value, audio.value).catch(() => {});
+    void pushProgress(progress.value, audio.value, session.selectedBook).catch(() => {});
     return saved;
   }
+  async function selectLearningBook(bookId) {
+    await selectBook(bookId);
+    session.selectedBook = bookId;
+    session.selectedDay = null;
+    session.customWords = null;
+    session.current = null;
+    return currentBook.value;
+  }
   function prepareDay(day, gap = null) {
-    session.selectedDay = Number(day); session.reviewGap = gap === null ? null : Number(gap); session.customWords = null; session.label = `Day ${day}`;
+    session.selectedDay = Number(day); session.reviewGap = gap === null ? null : Number(gap); session.customWords = null; session.label = `${currentBook.value.chapterLabel} ${day}`;
   }
   function prepareCustom(words, label) {
     session.selectedDay = null; session.reviewGap = null; session.customWords = words; session.label = label;
@@ -81,19 +117,22 @@ export function useLearningStore() {
     session.mode = nextMode;
     const source = custom || sourceWords();
     session.queue = custom || session.customWords
-      ? shuffle(source)
-      : weightedSample(source, Number(session.count), word => wordWeight(meta(word)));
+      ? (session.random ? shuffle(source) : [...source])
+      : (session.random ? weightedSample(source, Number(session.count), word => wordWeight(meta(word))) : source.slice(0, Number(session.count)));
     session.index = session.right = session.wrong = session.attempts = 0;
     session.mistakes = {};
     session.requeueCounts = {};
+    session.startedAt = Date.now(); session.finishedAt = null; session.correctKeys = 0; session.wrongKeys = 0; session.letterMistakes = {};
     return nextQuestion();
   }
   function nextQuestion() {
     if (session.index >= session.queue.length) return false;
-    session.current = session.queue[session.index]; session.attempts = 0; session.answered = false; session.requeuedCurrent = false; session.typed = ''; session.spellingDiff = []; session.feedback = '';
-    session.questionType = session.mode === 'mixed' ? (Math.random() < .5 ? 'spell' : 'choice') : session.mode;
+    session.current = session.queue[session.index]; session.attempts = 0; session.answered = false; session.requeuedCurrent = false; session.typed = ''; session.spellingDiff = []; session.feedback = ''; session.currentWordErrors = 0; session.typingErrorIndex = -1; session.typingErrorChar = ''; session.typingLocked = false;
+    session.questionType = session.mode === 'mixed' ? ['spell', 'choice', 'typing'][Math.floor(Math.random() * 3)] : session.mode;
     session.choiceOptions = session.questionType === 'choice' ? buildChoices(session.current) : [];
     if (audio.value.auto) speak(session.current);
+    const nextWord = session.queue[session.index + 1];
+    if (nextWord) preloadWord(nextWord.word, audio.value.accent);
     return true;
   }
   function buildChoices(current) {
@@ -119,7 +158,7 @@ export function useLearningStore() {
     if (!ok) {
       if (session.questionType === 'spell') session.spellingDiff = spellingDifference(typedAnswer, session.current.word);
       session.attempts++; recordWrong();
-      if (session.questionType === 'typing') { session.attempts = 0; session.feedback = '输入有误，已清空，请重新敲这个单词。'; return; }
+      if (session.questionType === 'typing') { session.currentWordErrors++; session.attempts = 0; session.feedback = '输入有误，请重新敲这个单词。'; return; }
       if (session.attempts < 3) { session.feedback = `回答不对，还可以尝试 ${3 - session.attempts} 次。`; return; }
     } else {
       session.right++;
@@ -135,6 +174,7 @@ export function useLearningStore() {
     session.feedback = ok ? `正确：${session.current.word}` : `正确答案：${session.current.word} · ${session.current.meaning}`;
   }
   function finish() {
+    session.finishedAt = Date.now();
     if (session.selectedDay) {
       const schedule = progress.value.daySchedule[session.selectedDay] ||= { learnedDate: today(), reviewed: [] };
       if (session.reviewGap) schedule.reviewed = [...new Set([...(schedule.reviewed || []), ...REVIEW_DAYS.filter(value => value <= session.reviewGap)])];
@@ -143,6 +183,14 @@ export function useLearningStore() {
     void saveProgress();
   }
   function next() { session.index++; return nextQuestion(); }
+  function restart() { return start(session.mode); }
+  function skip() { session.index++; return nextQuestion(); }
+  function recordTypingKey(correct, expected, entered) {
+    if (correct) { session.correctKeys++; return; }
+    session.wrongKeys++;
+    const key = String(expected || entered || '?').toLowerCase();
+    session.letterMistakes[key] = (session.letterMistakes[key] || 0) + 1;
+  }
 
   function requeueCurrentWord(key) {
     if (session.requeuedCurrent || (session.requeueCounts[key] || 0) >= 2) return;
@@ -159,15 +207,18 @@ export function useLearningStore() {
     try {
       const user = await getCloudUser();
       if (!user) { cloudSync.status = 'idle'; return { synced: false, reason: 'signed-out' }; }
-      const cloud = await pullProgress();
-      progress.value = mergeProgress(progress.value, cloudProgressToLocal(cloud));
-      if (cloud?.settings) {
-        const settings = cloud.settings;
-        audio.value = { ...audio.value, auto: Boolean(settings.auto_play ?? audio.value.auto), accent: settings.accent || audio.value.accent, wordVolume: Number(settings.word_volume ?? audio.value.wordVolume ?? 85), keyboard: Boolean(settings.keyboard_sound ?? audio.value.keyboard), keyboardSound: settings.keyboard_sound_file || audio.value.keyboardSound, keyboardVolume: Number(settings.keyboard_volume ?? audio.value.keyboardVolume ?? 55), feedback: settings.feedback_sound ?? audio.value.feedback, feedbackVolume: Number(settings.feedback_volume ?? audio.value.feedbackVolume ?? 55) };
+      let settings = null;
+      for (const book of BOOKS) {
+        const cloud = await pullProgress(book.id);
+        allProgress.value[book.id] = mergeProgress(allProgress.value[book.id], cloudProgressToLocal(cloud));
+        settings ||= cloud?.settings || null;
+      }
+      if (settings) {
+        audio.value = { ...audio.value, auto: Boolean(settings.auto_play ?? audio.value.auto), wordAudio: settings.word_audio ?? audio.value.wordAudio, accent: settings.accent || audio.value.accent, wordVolume: Number(settings.word_volume ?? audio.value.wordVolume ?? 85), rate: Number(settings.playback_rate ?? audio.value.rate ?? 1), loop: settings.loop_audio ?? audio.value.loop, phonetic: settings.show_phonetic ?? audio.value.phonetic, translationSpeech: settings.translation_speech ?? audio.value.translationSpeech, keyboard: Boolean(settings.keyboard_sound ?? audio.value.keyboard), keyboardSound: settings.keyboard_sound_file || audio.value.keyboardSound, keyboardVolume: Number(settings.keyboard_volume ?? audio.value.keyboardVolume ?? 55), feedback: settings.feedback_sound ?? audio.value.feedback, feedbackVolume: Number(settings.feedback_volume ?? audio.value.feedbackVolume ?? 55) };
         await saveAudioSettings(audio.value);
       }
-      await setJson(PROGRESS_KEY, progress.value);
-      await pushProgress(progress.value, audio.value);
+      await setJson(PROGRESS_KEY, allProgress.value);
+      await Promise.all(BOOKS.map(book => pushProgress(allProgress.value[book.id], audio.value, book.id)));
       cloudSync.status = 'synced'; cloudSync.lastSyncedAt = new Date().toISOString();
       return { synced: true, user };
     } catch (error) {
@@ -178,11 +229,15 @@ export function useLearningStore() {
   }
 
   async function clearLocalProgress() {
-    progress.value = { words: {}, days: {}, daySchedule: {} };
+    allProgress.value = { cet4: emptyProgress(), cet6: emptyProgress() };
     await removeItem(PROGRESS_KEY);
   }
 
-  return { days, progress, audio, cloudSync, progressSummary, session, dayInfo, wrongWords, sessionMistakes, nextNewDay, dueReviews, today, meta, speak, playKeySound, playAnswerSound, previewKeySound, previewWordSound, previewAnswerSound, updateAudio, prepareDay, prepareCustom, sourceWords, start, answer, finish, next, syncWithCloud, clearLocalProgress };
+  return { books, currentBook, days, progress, allProgress, audio, cloudSync, progressSummary, sessionStats, session, dayInfo, wrongWords, sessionMistakes, nextNewDay, dueReviews, today, meta, speak, speakMeaning, playKeySound, playAnswerSound, previewKeySound, previewWordSound, previewAnswerSound, updateAudio, selectLearningBook, prepareDay, prepareCustom, sourceWords, start, restart, skip, recordTypingKey, answer, finish, next, syncWithCloud, clearLocalProgress };
+}
+
+function normalizeProgress(value) {
+  return { words: value?.words || {}, days: value?.days || {}, daySchedule: value?.daySchedule || {} };
 }
 
 function today() { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }

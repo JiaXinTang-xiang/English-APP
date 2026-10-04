@@ -1,4 +1,4 @@
-const CACHE = 'cet4-vue-v3';
+const CACHE = 'vocab-vue-v4';
 const SHELL = [
   './',
   './manifest.webmanifest',
@@ -8,7 +8,8 @@ const SHELL = [
   './icon-maskable-512.png',
   './apple-touch-icon.png',
   './vocab-data.js',
-  './articles-data.js'
+  './articles-data.js',
+  './books/cet6.json'
 ];
 
 self.addEventListener('install', event => {
