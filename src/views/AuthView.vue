@@ -50,7 +50,9 @@ async function verifyCode() {
   message.value = '';
   busy.value = true;
   try {
-    const data = await verifyEmailCode(email.value.trim(), otp.value.trim());
+    const token = otp.value.replace(/\D/g, '');
+    if (token.length < 6 || token.length > 8) throw new Error('请输入邮件中的完整验证码。');
+    const data = await verifyEmailCode(email.value.trim(), token);
     await chooseAccount(data.user);
     await syncWithCloud();
     await router.replace({ name: 'home' });
@@ -120,11 +122,11 @@ onUnmounted(() => clearInterval(cooldownTimer));
       <div class="form-heading"><button type="button" class="back-inline" @click="formMode = null">←</button><strong>邮箱验证码登录</strong></div>
       <input v-model="email" type="email" autocomplete="email" placeholder="邮箱地址" required :disabled="otpStep === 'code'">
       <template v-if="otpStep === 'email'">
-        <p class="hint auth-help">我们会发送 6 位验证码到你的邮箱，无需记密码。</p>
+        <p class="hint auth-help">我们会发送一次性验证码到你的邮箱，无需记密码。</p>
         <button class="primary" :disabled="busy">{{ busy ? '发送中…' : '发送验证码' }}</button>
       </template>
       <template v-else>
-        <input v-model="otp" inputmode="numeric" autocomplete="one-time-code" placeholder="输入 6 位验证码" maxlength="6" pattern="[0-9]{6}" required>
+        <input v-model="otp" inputmode="numeric" autocomplete="one-time-code" placeholder="输入邮件中的验证码" maxlength="8" pattern="[0-9]{6,8}" required>
         <button class="primary" :disabled="busy">{{ busy ? '验证中…' : '验证码登录并同步' }}</button>
         <button type="button" class="text-button" :disabled="cooldown > 0 || busy" @click="sendCode">{{ cooldown > 0 ? `${cooldown}s 后重新发送` : '重新发送验证码' }}</button>
         <button type="button" class="text-button" @click="otpStep = 'email'; otp = ''">更换邮箱</button>

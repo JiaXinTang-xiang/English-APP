@@ -100,7 +100,7 @@ VITE_SUPABASE_ANON_KEY=你的公开anon-key
 邮箱验证码还需要在 Supabase Dashboard 完成以下配置：
 
 - Authentication → Providers → Email：启用 Email
-- Authentication → Email Templates：模板中放入 `{{ .Token }}`，让邮件显示 6 位验证码
+- Authentication → Email Templates：模板中放入 `{{ .Token }}`，让邮件显示一次性验证码
 - Authentication → URL Configuration：Site URL 设置为 `https://en-app.jiaxin404.top`
 - Redirect URLs 添加 `https://en-app.jiaxin404.top/**` 和本地开发地址
 
