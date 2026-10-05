@@ -44,6 +44,7 @@ npm run build:web
 - `supabase/schema.sql`：Supabase 表结构与 RLS 安全策略
 - `src/services/audio.js`：统一音频播放模块
 - `src/services/books.js`：CET-4/CET-6 词书目录与当前词书
+- `src/services/identity.js`：游客资料、账号资料和 Supabase 个人资料
 - `src/components/StudyToolbar.vue`：电脑和手机响应式学习控制台
 - `src/components/AudioSettingsDrawer.vue`：发音、键盘音和反馈音设置
 - `public/vocab-data.js`：网页构建使用的词表数据
@@ -105,5 +106,7 @@ VITE_SUPABASE_ANON_KEY=你的公开anon-key
 - Redirect URLs 添加 `https://en-app.jiaxin404.top/**` 和本地开发地址
 
 已部署过旧数据库时，在 SQL Editor 再执行一次 `supabase/audio-settings-migration.sql`，补齐音频偏好字段。脚本使用 `add column if not exists`，不会删除已有数据。
+
+个人资料字段迁移执行 `supabase/profile-migration.sql`。资料支持显示名称、昵称和性别；登录账号后同步到 `profiles`，游客模式只保存在当前设备。
 
 `service_role` key 不能放进 Vue、Vercel 前端或 Android App。RLS 策略保证每个用户只能访问自己的进度。

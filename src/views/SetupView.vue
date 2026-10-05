@@ -8,12 +8,19 @@ const route = useRoute(), router = useRouter();
 const { currentBook, session, speak, prepareDay, sourceWords, start } = useLearningStore();
 const article = computed(() => currentBook.value.articleEnabled ? window.CET4_ARTICLES?.find(item => item.day === Number(session.selectedDay)) || null : null);
 const showTranslation = ref(false);
+const revealedMeanings = ref(new Set());
 onMounted(() => {
   if (route.params.day && (session.selectedDay !== Number(route.params.day) || !session.label)) prepareDay(route.params.day, route.query.gap ?? null);
   if (!route.params.day && !session.customWords) router.replace({ name: 'home' });
 });
 function begin(mode) { if (start(mode)) router.push({ name: 'quiz' }); }
 function toggleTranslation() { showTranslation.value = !showTranslation.value; }
+function toggleMeaning(word) {
+  const next = new Set(revealedMeanings.value);
+  const key = word.word.toLowerCase();
+  next.has(key) ? next.delete(key) : next.add(key);
+  revealedMeanings.value = next;
+}
 </script>
 
 <template>
@@ -23,7 +30,7 @@ function toggleTranslation() { showTranslation.value = !showTranslation.value; }
       <button class="mode" @click="begin('choice')"><b>英译中</b><span>看英文，选择中文释义</span></button><button class="mode" @click="begin('spell')"><b>中译英</b><span>看中文，提交英文拼写</span></button><button class="mode typing-mode" @click="begin('typing')"><b>敲单词</b><span>显示完整单词，照着逐字输入</span></button><button class="mode" @click="begin('mixed')"><b>混合训练</b><span>选择题和拼写题随机出现</span></button>
       <label v-if="!session.customWords" class="count-label">本轮题数<select v-model="session.count"><option>10</option><option>20</option><option>30</option><option>50</option></select></label>
       <article v-if="article" class="article-card"><div class="article-heading"><div><p class="eyebrow">语境短文 · {{ article.wordCount ? article.wordCount + '词' : 'CET-4' }}</p><h3>{{ article.title }}</h3><p class="article-theme">主题：{{ article.theme }}</p></div><button class="secondary article-toggle" @click="toggleTranslation">{{ showTranslation ? '隐藏译文' : '查看译文' }}</button></div><div class="article-body"><p v-for="(paragraph, index) in (showTranslation ? article.translation : article.english)" :key="index">{{ paragraph }}</p></div><ArticleAudioPlayer :paragraphs="article.english" /><p class="article-tip">先读英文，再打开译文核对；今日目标词已经融入文章语境。</p></article>
-      <div class="task-block"><h3 class="task-title">本组单词</h3><div class="word-list"><div v-for="(word, index) in sourceWords()" :key="word.word + index" class="word-row"><div class="word-en"><b>{{ index + 1 }}. {{ word.word }}</b><button class="speak-btn" @click="speak(word)">🔊</button><div class="review-note">{{ word.pos }} · {{ word.ipa }}</div></div><div class="meaning-cover revealed">{{ word.meaning }}</div></div></div></div>
+      <div class="task-block"><h3 class="task-title">本组单词</h3><p class="hint meaning-help">英文直接显示，点击中文区域查看释义。</p><div class="word-list"><div v-for="(word, index) in sourceWords()" :key="word.word + index" class="word-row"><div class="word-en"><b>{{ index + 1 }}. {{ word.word }}</b><button class="speak-btn" title="播放发音" @click="speak(word)">🔊</button><div class="review-note">{{ word.pos }} · {{ word.ipa }}</div></div><button class="meaning-cover" :class="{ revealed: revealedMeanings.has(word.word.toLowerCase()) }" @click="toggleMeaning(word)">{{ revealedMeanings.has(word.word.toLowerCase()) ? word.meaning : '点击查看中文释义' }}</button></div></div></div>
     </div>
   </section></main>
 </template>

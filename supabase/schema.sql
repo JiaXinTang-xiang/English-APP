@@ -1,6 +1,8 @@
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   nickname text,
+  display_name text,
+  gender text not null default 'secret' check (gender in ('male', 'female', 'secret')),
   created_at timestamptz not null default now()
 );
 

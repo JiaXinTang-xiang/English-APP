@@ -37,6 +37,7 @@ const appFiles = [
   'src/views/QuizView.vue',
   'supabase/schema.sql',
   'supabase/audio-settings-migration.sql',
+  'supabase/profile-migration.sql',
   '.env.example',
   'vite.config.js',
   'public/vocab-data.js',
