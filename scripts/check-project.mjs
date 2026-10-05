@@ -24,6 +24,7 @@ const appFiles = [
   'src/components/StudyToolbar.vue',
   'src/services/appearance.js',
   'src/services/audio.js',
+  'src/services/articleAudio.js',
   'src/services/books.js',
   'src/services/storage.js',
   'src/services/dailyQuote.js',

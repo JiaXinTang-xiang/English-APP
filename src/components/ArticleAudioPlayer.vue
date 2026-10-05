@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, ref } from 'vue';
+import { isArticleSpeaking, pauseArticle, resumeArticle, speakArticle, stopArticle } from '../services/articleAudio';
 
 const props = defineProps({ paragraphs: { type: Array, default: () => [] } });
 const playing = ref(false);
@@ -9,22 +10,20 @@ const rate = ref(0.9);
 const currentText = computed(() => props.paragraphs[index.value] || '');
 
 function speakCurrent() {
-  if (!('speechSynthesis' in window) || !currentText.value) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(currentText.value);
-  utterance.lang = 'en-US';
-  utterance.rate = Number(rate.value);
-  utterance.onend = () => {
+  if (!currentText.value) return;
+  const started = speakArticle(currentText.value, {
+    rate: rate.value,
+    onend: () => {
     if (index.value < props.paragraphs.length - 1) { index.value += 1; speakCurrent(); }
     else { playing.value = false; paused.value = false; }
-  };
-  utterance.onerror = () => { playing.value = false; paused.value = false; };
-  window.speechSynthesis.speak(utterance);
-  playing.value = true; paused.value = false;
+    },
+    onerror: () => { playing.value = false; paused.value = false; }
+  });
+  if (started) { playing.value = true; paused.value = false; }
 }
-function play() { if (paused.value) { window.speechSynthesis.resume(); paused.value = false; playing.value = true; } else speakCurrent(); }
-function pause() { if (!playing.value) return; window.speechSynthesis.pause(); paused.value = true; }
-function stop() { window.speechSynthesis?.cancel(); playing.value = false; paused.value = false; index.value = 0; }
+function play() { if (paused.value && isArticleSpeaking()) { resumeArticle(); paused.value = false; playing.value = true; } else speakCurrent(); }
+function pause() { if (!playing.value) return; pauseArticle(); paused.value = true; }
+function stop() { stopArticle(); playing.value = false; paused.value = false; index.value = 0; }
 function previous() { index.value = Math.max(0, index.value - 1); if (playing.value) speakCurrent(); }
 function next() { index.value = Math.min(props.paragraphs.length - 1, index.value + 1); if (playing.value) speakCurrent(); }
 onBeforeUnmount(stop);

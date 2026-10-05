@@ -43,6 +43,7 @@ npm run build:web
 - `src/services/cloudSync.js`：登录和学习数据同步接口
 - `supabase/schema.sql`：Supabase 表结构与 RLS 安全策略
 - `src/services/audio.js`：统一音频播放模块
+- `src/services/articleAudio.js`：文章朗读独立播放通道，不和单词发音共用控制状态
 - `src/services/books.js`：CET-4/CET-6 词书目录与当前词书
 - `src/services/identity.js`：游客资料、账号资料和 Supabase 个人资料
 - `src/components/StudyToolbar.vue`：电脑和手机响应式学习控制台
@@ -98,7 +99,7 @@ VITE_SUPABASE_ANON_KEY=你的公开anon-key
 
 4. Vercel 项目 Settings → Environment Variables 中添加同名变量，然后重新部署。
 
-邮箱验证码还需要在 Supabase Dashboard 完成以下配置：
+登录目前只使用邮箱验证码，不提供密码登录入口。邮箱验证码还需要在 Supabase Dashboard 完成以下配置：
 
 - Authentication → Providers → Email：启用 Email
 - Authentication → Email Templates：模板中放入 `{{ .Token }}`，让邮件显示一次性验证码

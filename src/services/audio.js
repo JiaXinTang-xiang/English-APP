@@ -1,4 +1,5 @@
 import { getJson, setJson } from './storage';
+import { isArticleSpeaking } from './articleAudio';
 
 const AUDIO_KEY = 'cet4-audio-settings-v1';
 const defaults = { auto: false, wordAudio: true, accent: 'us', wordVolume: 85, rate: 1, loop: false, phonetic: true, translationSpeech: false, keyboard: false, keyboardSound: '机械键盘2', keyboardVolume: 55, feedback: true, feedbackVolume: 55 };
@@ -101,6 +102,7 @@ export function playWord(word, accent = currentSettings.accent) {
 
 function fallbackSpeech(text, accent) {
   if (!('speechSynthesis' in window)) return;
+  if (isArticleSpeaking()) return;
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = accent === 'uk' ? 'en-GB' : 'en-US';
